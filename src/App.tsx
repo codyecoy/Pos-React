@@ -24,6 +24,50 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const { isLoggedIn, logout } = useAuthStore()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  
+  // Fungsi untuk meminta full screen
+  const requestFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.log('Gagal masuk full screen:', err)
+      })
+    }
+  }
+
+  // Meminta full screen saat aplikasi dimuat dan saat user login
+  useEffect(() => {
+    requestFullScreen()
+
+    // Listener klik untuk masuk full screen saat ada interaksi pengguna
+    const handleUserInteraction = () => {
+      requestFullScreen()
+    }
+
+    document.addEventListener('click', handleUserInteraction, { once: true })
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction)
+    }
+  }, [])
+
+  // Listener untuk memastikan tetap full screen saat perubahan state login
+  useEffect(() => {
+    requestFullScreen()
+  }, [isLoggedIn])
+
+  // Listener untuk keluar full screen ketika full screen berubah
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      if (!document.fullscreenElement) {
+      requestFullScreen()
+      }
+    }
+
+    document.addEventListener('fullscreenchange', handleFullScreenChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullScreenChange)
+    }
+  }, [])
 
   useEffect(() => {
     if (!isLoggedIn) return

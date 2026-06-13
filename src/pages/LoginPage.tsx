@@ -22,19 +22,6 @@ export default function LoginPage() {
   const location = useLocation()
   const mode = location.pathname === '/register' ? 'register' : 'login'
 
-  useEffect(() => {
-    // Meminta fullscreen ketika halaman dimuat
-    const enterFullscreen = () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
-          console.log('Gagal masuk fullscreen:', err)
-        })
-      }
-    }
-
-    enterFullscreen()
-  }, [])
-
   const [name, setName] = useState('')
   const [storeName, setStoreName] = useState('')
   const [email, setEmail] = useState('admin@pospro.com')
