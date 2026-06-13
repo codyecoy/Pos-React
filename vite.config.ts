@@ -4,6 +4,12 @@ import { defineConfig } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
 
 export default defineConfig({
+  server: {
+    host: "0.0.0.0",
+    allowedHosts: [
+      "api-kasir.bimasolution.com"
+    ]
+  },
   plugins: [
     react(),
     VitePWA({
