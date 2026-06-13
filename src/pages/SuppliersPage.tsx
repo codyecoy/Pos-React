@@ -19,6 +19,8 @@ import { Supplier } from '@/types'
 import { toast } from 'sonner'
 import { AnimatePresence } from 'framer-motion'
 import { useInventoryStore } from '@/store/useInventoryStore'
+import { useConfirm } from '@/components/ui/confirm'
+import { createId } from '@/lib/ids'
 
 export default function SuppliersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -26,6 +28,7 @@ export default function SuppliersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   
   const { suppliers, addSupplier, updateSupplier, deleteSupplier } = useInventoryStore()
+  const confirm = useConfirm()
 
   const handleAddSupplier = () => {
     setSelectedSupplier(null)
@@ -44,7 +47,7 @@ export default function SuppliersPage() {
     } else {
       const newSupplier = {
         ...formData,
-        id: Math.random().toString(36).substr(2, 9),
+        id: createId(),
         totalPurchased: 0
       } as Supplier
       addSupplier(newSupplier)
@@ -54,10 +57,18 @@ export default function SuppliersPage() {
   }
 
   const handleDeleteSupplier = (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus data supplier ini?')) {
+    void (async () => {
+      const ok = await confirm({
+        title: 'Hapus Supplier',
+        description: 'Apakah Anda yakin ingin menghapus data supplier ini?',
+        confirmText: 'Hapus',
+        cancelText: 'Batal',
+        destructive: true,
+      })
+      if (!ok) return
       deleteSupplier(id)
       toast.error('Data supplier telah dihapus.')
-    }
+    })()
   }
 
   const filteredSuppliers = suppliers.filter(s => 

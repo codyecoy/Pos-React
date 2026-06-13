@@ -35,6 +35,7 @@ const navItems = [
 ]
 
 import { toast } from 'sonner'
+import { useConfirm } from '@/components/ui/confirm'
 
 interface SidebarProps {
   onLogout: () => void
@@ -43,11 +44,21 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onLogout, onClose, isMobile }: SidebarProps) {
+  const confirm = useConfirm()
+
   const handleLogout = () => {
-    if (confirm('Apakah Anda yakin ingin keluar?')) {
+    void (async () => {
+      const ok = await confirm({
+        title: 'Keluar',
+        description: 'Apakah Anda yakin ingin keluar?',
+        confirmText: 'Keluar',
+        cancelText: 'Batal',
+        destructive: true,
+      })
+      if (!ok) return
       onLogout()
       toast.success('Berhasil keluar.')
-    }
+    })()
   }
 
   const sidebarContent = (

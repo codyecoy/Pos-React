@@ -10,27 +10,133 @@ import {
   Globe, 
   Languages, 
   HelpCircle,
-  ChevronRight,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  CreditCard,
+  CheckCircle2
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { activateLicense, getLicenseStatus } from '@/repositories/transactionsRepo'
+import { settingsRepo } from '@/repositories/settingsRepo'
+import { capitalizeWords, formatPhoneNumber } from '@/lib/formatters'
+import type { StoreSettings, ReceiptSettings, AppPreferences } from '@/types'
 
 type TabType = 'store' | 'receipt' | 'app' | 'security'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('store')
   const [isLoading, setIsLoading] = useState(false)
+  const [activationCode, setActivationCode] = useState('')
+  const [isActivating, setIsActivating] = useState(false)
+  
+  // Store Settings State
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>({
+    name: '',
+    phone: '',
+    address: '',
+    currency: 'IDR',
+    timezone: 'Asia/Jakarta',
+  })
+  
+  // Receipt Settings State
+  const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings>({
+    showLogo: true,
+    headerMessage: '',
+    footerMessage: '',
+    showQrCode: true,
+  })
+  
+  // App Preferences State
+  const [appPreferences, setAppPreferences] = useState<AppPreferences>({
+    scanSound: true,
+    lowStockNotification: true,
+    autoDarkMode: false,
+    animations: true,
+  })
 
-  const handleSave = () => {
+  const license = useLiveQuery(async () => getLicenseStatus(), [], null)
+  
+  // Load settings on mount
+  const loadSettings = async () => {
+    const [store, receipt, app] = await Promise.all([
+      settingsRepo.getStoreSettings(),
+      settingsRepo.getReceiptSettings(),
+      settingsRepo.getAppPreferences(),
+    ])
+    setStoreSettings(store)
+    setReceiptSettings(receipt)
+    setAppPreferences(app)
+  }
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const handleSave = async () => {
     setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      await Promise.all([
+        settingsRepo.saveStoreSettings(storeSettings),
+        settingsRepo.saveReceiptSettings(receiptSettings),
+        settingsRepo.saveAppPreferences(appPreferences),
+      ])
       toast.success('Pengaturan berhasil disimpan!')
-    }, 1500)
+    } catch (error) {
+      toast.error('Gagal menyimpan pengaturan.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const result = event.target?.result as string
+        setStoreSettings(prev => ({ ...prev, logo: result }))
+        toast.success('Logo berhasil diupload!')
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleStoreNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStoreSettings(prev => ({ ...prev, name: capitalizeWords(e.target.value) }))
+  }
+
+  const handleStorePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStoreSettings(prev => ({ ...prev, phone: formatPhoneNumber(e.target.value) }))
+  }
+
+  const handleStoreAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setStoreSettings(prev => ({ ...prev, address: capitalizeWords(e.target.value) }))
+  }
+
+  const handleSocialInstagramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStoreSettings(prev => ({ 
+      ...prev, 
+      socialMedia: { ...prev.socialMedia, instagram: e.target.value }
+    }))
+  }
+
+  const handleSocialWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStoreSettings(prev => ({ 
+      ...prev, 
+      socialMedia: { ...prev.socialMedia, website: e.target.value.toLowerCase() }
+    }))
+  }
+
+  const toggleSwitch = (key: keyof ReceiptSettings | keyof AppPreferences, value: boolean) => {
+    if (key in receiptSettings) {
+      setReceiptSettings(prev => ({ ...prev, [key]: value }))
+    } else if (key in appPreferences) {
+      setAppPreferences(prev => ({ ...prev, [key]: value }))
+    }
   }
 
   const tabs = [
@@ -114,10 +220,21 @@ export default function SettingsPage() {
                 <div className="flex flex-col md:flex-row gap-8">
                   <div className="shrink-0">
                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 ml-2">Logo Toko</p>
-                    <div className="w-32 h-32 rounded-[2rem] bg-accent/50 border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:bg-primary/5 hover:border-primary/40 transition-all cursor-pointer group relative">
-                      <ImageIcon size={32} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
-                      <p className="text-[10px] font-black uppercase mt-2">Ganti Logo</p>
-                      <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" />
+                    <div className="w-32 h-32 rounded-[2rem] bg-accent/50 border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:bg-primary/5 hover:border-primary/40 transition-all cursor-pointer group relative overflow-hidden">
+                      {storeSettings.logo ? (
+                        <img src={storeSettings.logo} alt="Logo Toko" className="w-full h-full object-cover" />
+                      ) : (
+                        <>
+                          <ImageIcon size={32} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                          <p className="text-[10px] font-black uppercase mt-2">Ganti Logo</p>
+                        </>
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="absolute inset-0 opacity-0 cursor-pointer" 
+                      />
                     </div>
                   </div>
                   
@@ -126,16 +243,18 @@ export default function SettingsPage() {
                       <div className="space-y-2">
                         <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">Nama Toko</label>
                         <input 
-                          type="text" 
-                          defaultValue="POS PRO STORE - JAKARTA"
-                          className="w-full h-14 px-6 rounded-2xl bg-accent/30 border-none ring-1 ring-border/40 focus:ring-2 focus:ring-primary/40 transition-all text-base font-bold"
-                        />
+                      type="text" 
+                      value={storeSettings.name}
+                      onChange={handleStoreNameChange}
+                      className="w-full h-14 px-6 rounded-2xl bg-accent/30 border-none ring-1 ring-border/40 focus:ring-2 focus:ring-primary/40 transition-all text-base font-bold"
+                    />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">No. Telepon Bisnis</label>
                         <input 
                           type="tel" 
-                          defaultValue="021-1234567"
+                          value={storeSettings.phone}
+                          onChange={handleStorePhoneChange}
                           className="w-full h-14 px-6 rounded-2xl bg-accent/30 border-none ring-1 ring-border/40 focus:ring-2 focus:ring-primary/40 transition-all text-base font-bold"
                         />
                       </div>
@@ -143,7 +262,8 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                       <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">Alamat Kantor Pusat</label>
                       <textarea 
-                        defaultValue="Jl. Digital No. 123, SCBD Kav 52-53, Jakarta Selatan, 12190"
+                        value={storeSettings.address}
+                        onChange={(e) => setStoreSettings(prev => ({ ...prev, address: e.target.value }))}
                         className="w-full h-28 p-6 rounded-2xl bg-accent/30 border-none ring-1 ring-border/40 focus:ring-2 focus:ring-primary/40 transition-all text-base font-bold resize-none"
                       />
                     </div>
@@ -161,13 +281,31 @@ export default function SettingsPage() {
                         <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-pink-500">
                           <ImageIcon size={20} />
                         </div>
-                        <input type="text" placeholder="@instagram_toko" className="flex-1 bg-transparent border-none text-sm font-bold focus:ring-0" />
+                        <input 
+                          type="text" 
+                          placeholder="@instagram_toko" 
+                          value={storeSettings.socialMedia?.instagram || ''}
+                          onChange={(e) => setStoreSettings(prev => ({
+                            ...prev,
+                            socialMedia: { ...prev.socialMedia, instagram: e.target.value }
+                          }))}
+                          className="flex-1 bg-transparent border-none text-sm font-bold focus:ring-0" 
+                        />
                       </div>
                       <div className="flex items-center gap-3 bg-accent/30 p-2 rounded-2xl">
                         <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-blue-500">
                           <Globe size={20} />
                         </div>
-                        <input type="text" placeholder="www.website.com" className="flex-1 bg-transparent border-none text-sm font-bold focus:ring-0" />
+                        <input 
+                          type="text" 
+                          placeholder="www.website.com" 
+                          value={storeSettings.socialMedia?.website || ''}
+                          onChange={(e) => setStoreSettings(prev => ({
+                            ...prev,
+                            socialMedia: { ...prev.socialMedia, website: e.target.value }
+                          }))}
+                          className="flex-1 bg-transparent border-none text-sm font-bold focus:ring-0" 
+                        />
                       </div>
                     </div>
                   </div>
@@ -180,16 +318,25 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <p className="text-[10px] font-black text-muted-foreground uppercase ml-2">Mata Uang</p>
-                        <select className="w-full h-12 px-4 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold">
-                          <option>IDR (Rp)</option>
-                          <option>USD ($)</option>
+                        <select 
+                          value={storeSettings.currency}
+                          onChange={(e) => setStoreSettings(prev => ({ ...prev, currency: e.target.value }))}
+                          className="w-full h-12 px-4 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold"
+                        >
+                          <option value="IDR">IDR (Rp)</option>
+                          <option value="USD">USD ($)</option>
                         </select>
                       </div>
                       <div className="space-y-1">
                         <p className="text-[10px] font-black text-muted-foreground uppercase ml-2">Zona Waktu</p>
-                        <select className="w-full h-12 px-4 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold">
-                          <option>Asia/Jakarta (WIB)</option>
-                          <option>Asia/Makassar (WITA)</option>
+                        <select 
+                          value={storeSettings.timezone}
+                          onChange={(e) => setStoreSettings(prev => ({ ...prev, timezone: e.target.value }))}
+                          className="w-full h-12 px-4 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold"
+                        >
+                          <option value="Asia/Jakarta">Asia/Jakarta (WIB)</option>
+                          <option value="Asia/Makassar">Asia/Makassar (WITA)</option>
+                          <option value="Asia/Jayapura">Asia/Jayapura (WIT)</option>
                         </select>
                       </div>
                     </div>
@@ -219,13 +366,27 @@ export default function SettingsPage() {
                             <p className="font-bold text-sm">Tampilkan Logo</p>
                             <p className="text-xs text-muted-foreground">Logo akan muncul di bagian paling atas struk.</p>
                           </div>
-                          <div className="w-12 h-6 bg-primary rounded-full relative p-1 cursor-pointer">
-                            <div className="w-4 h-4 bg-white rounded-full ml-auto" />
+                          <div 
+                            onClick={() => toggleSwitch('showLogo', !receiptSettings.showLogo)}
+                            className={cn(
+                              "w-12 h-6 rounded-full relative p-1 cursor-pointer transition-all",
+                              receiptSettings.showLogo ? "bg-primary" : "bg-muted"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-4 h-4 bg-white rounded-full transition-all",
+                              receiptSettings.showLogo ? "ml-auto" : ""
+                            )} />
                           </div>
                         </div>
                         <div className="space-y-2">
                           <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">Pesan Pembuka (Header)</label>
-                          <input type="text" defaultValue="Selamat Datang di POS PRO!" className="w-full h-12 px-6 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold" />
+                          <input 
+                            type="text" 
+                            value={receiptSettings.headerMessage}
+                            onChange={(e) => setReceiptSettings(prev => ({ ...prev, headerMessage: e.target.value }))}
+                            className="w-full h-12 px-6 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold focus:ring-2 focus:ring-primary/40 transition-all" 
+                          />
                         </div>
                       </div>
                     </div>
@@ -238,15 +399,28 @@ export default function SettingsPage() {
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">Pesan Penutup (Footer)</label>
-                          <textarea defaultValue="Terima kasih atas kunjungan Anda. Simpan struk ini sebagai bukti pembelian yang sah." className="w-full h-24 p-4 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold resize-none" />
+                          <textarea 
+                            value={receiptSettings.footerMessage}
+                            onChange={(e) => setReceiptSettings(prev => ({ ...prev, footerMessage: e.target.value }))}
+                            className="w-full h-24 p-4 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold resize-none focus:ring-2 focus:ring-primary/40 transition-all" 
+                          />
                         </div>
                         <div className="flex items-center justify-between p-4 bg-accent/30 rounded-2xl border border-border/40">
                           <div>
                             <p className="font-bold text-sm">Cetak QR Struk</p>
                             <p className="text-xs text-muted-foreground">QR Code untuk akses struk digital.</p>
                           </div>
-                          <div className="w-12 h-6 bg-primary rounded-full relative p-1 cursor-pointer">
-                            <div className="w-4 h-4 bg-white rounded-full ml-auto" />
+                          <div 
+                            onClick={() => toggleSwitch('showQrCode', !receiptSettings.showQrCode)}
+                            className={cn(
+                              "w-12 h-6 rounded-full relative p-1 cursor-pointer transition-all",
+                              receiptSettings.showQrCode ? "bg-primary" : "bg-muted"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-4 h-4 bg-white rounded-full transition-all",
+                              receiptSettings.showQrCode ? "ml-auto" : ""
+                            )} />
                           </div>
                         </div>
                       </div>
@@ -257,11 +431,19 @@ export default function SettingsPage() {
                   <div className="w-full xl:w-[350px] shrink-0">
                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 text-center">Preview Struk</p>
                     <div className="bg-white text-gray-900 p-8 rounded-[2rem] shadow-2xl space-y-4 font-mono text-xs scale-90 origin-top">
+                      {receiptSettings.showLogo && storeSettings.logo && (
+                        <div className="flex justify-center mb-4">
+                          <img src={storeSettings.logo} alt="Logo" className="w-16 h-16 object-contain rounded-lg" />
+                        </div>
+                      )}
                       <div className="text-center space-y-1">
-                        <p className="font-black text-sm uppercase">POS PRO STORE</p>
-                        <p>Jl. Digital No. 123, Jakarta</p>
-                        <p>021-1234567</p>
+                        <p className="font-black text-sm uppercase">{storeSettings.name}</p>
+                        <p>{storeSettings.address}</p>
+                        <p>{storeSettings.phone}</p>
                       </div>
+                      {receiptSettings.headerMessage && (
+                        <p className="text-center italic text-gray-500 pt-2">{receiptSettings.headerMessage}</p>
+                      )}
                       <div className="border-t border-dashed border-gray-300 pt-4 space-y-2">
                         <div className="flex justify-between">
                           <span>Cappuccino XL</span>
@@ -279,8 +461,12 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       <div className="pt-4 text-center space-y-2">
-                        <div className="w-16 h-16 bg-gray-200 mx-auto rounded flex items-center justify-center text-[8px] font-bold text-gray-400">QR CODE</div>
-                        <p className="px-4">Terima kasih atas kunjungan Anda.</p>
+                        {receiptSettings.showQrCode && (
+                          <div className="w-16 h-16 bg-gray-200 mx-auto rounded flex items-center justify-center text-[8px] font-bold text-gray-400">QR CODE</div>
+                        )}
+                        {receiptSettings.footerMessage && (
+                          <p className="px-4">{receiptSettings.footerMessage}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -304,15 +490,39 @@ export default function SettingsPage() {
                     </h4>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-4 bg-accent/30 rounded-2xl border border-border/40">
-                        <p className="font-bold text-sm">Suara Scan Barcode</p>
-                        <div className="w-12 h-6 bg-primary rounded-full relative p-1 cursor-pointer">
-                          <div className="w-4 h-4 bg-white rounded-full ml-auto" />
+                        <div>
+                          <p className="font-bold text-sm">Suara Scan Barcode</p>
+                          <p className="text-xs text-muted-foreground">Bunyi saat scan barcode berhasil.</p>
+                        </div>
+                        <div 
+                          onClick={() => toggleSwitch('scanSound', !appPreferences.scanSound)}
+                          className={cn(
+                            "w-12 h-6 rounded-full relative p-1 cursor-pointer transition-all",
+                            appPreferences.scanSound ? "bg-primary" : "bg-muted"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-4 h-4 bg-white rounded-full transition-all",
+                            appPreferences.scanSound ? "ml-auto" : ""
+                          )} />
                         </div>
                       </div>
                       <div className="flex items-center justify-between p-4 bg-accent/30 rounded-2xl border border-border/40">
-                        <p className="font-bold text-sm">Notifikasi Stok Rendah</p>
-                        <div className="w-12 h-6 bg-primary rounded-full relative p-1 cursor-pointer">
-                          <div className="w-4 h-4 bg-white rounded-full ml-auto" />
+                        <div>
+                          <p className="font-bold text-sm">Notifikasi Stok Rendah</p>
+                          <p className="text-xs text-muted-foreground">Dapatkan pemberitahuan saat stok barang hampir habis.</p>
+                        </div>
+                        <div 
+                          onClick={() => toggleSwitch('lowStockNotification', !appPreferences.lowStockNotification)}
+                          className={cn(
+                            "w-12 h-6 rounded-full relative p-1 cursor-pointer transition-all",
+                            appPreferences.lowStockNotification ? "bg-primary" : "bg-muted"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-4 h-4 bg-white rounded-full transition-all",
+                            appPreferences.lowStockNotification ? "ml-auto" : ""
+                          )} />
                         </div>
                       </div>
                     </div>
@@ -325,15 +535,39 @@ export default function SettingsPage() {
                     </h4>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-4 bg-accent/30 rounded-2xl border border-border/40">
-                        <p className="font-bold text-sm">Mode Gelap Otomatis</p>
-                        <div className="w-12 h-6 bg-muted rounded-full relative p-1 cursor-pointer">
-                          <div className="w-4 h-4 bg-white rounded-full" />
+                        <div>
+                          <p className="font-bold text-sm">Mode Gelap Otomatis</p>
+                          <p className="text-xs text-muted-foreground">Sesuaikan tema dengan pengaturan sistem.</p>
+                        </div>
+                        <div 
+                          onClick={() => toggleSwitch('autoDarkMode', !appPreferences.autoDarkMode)}
+                          className={cn(
+                            "w-12 h-6 rounded-full relative p-1 cursor-pointer transition-all",
+                            appPreferences.autoDarkMode ? "bg-primary" : "bg-muted"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-4 h-4 bg-white rounded-full transition-all",
+                            appPreferences.autoDarkMode ? "ml-auto" : ""
+                          )} />
                         </div>
                       </div>
                       <div className="flex items-center justify-between p-4 bg-accent/30 rounded-2xl border border-border/40">
-                        <p className="font-bold text-sm">Animasi Transisi</p>
-                        <div className="w-12 h-6 bg-primary rounded-full relative p-1 cursor-pointer">
-                          <div className="w-4 h-4 bg-white rounded-full ml-auto" />
+                        <div>
+                          <p className="font-bold text-sm">Animasi Transisi</p>
+                          <p className="text-xs text-muted-foreground">Efek animasi saat berpindah halaman.</p>
+                        </div>
+                        <div 
+                          onClick={() => toggleSwitch('animations', !appPreferences.animations)}
+                          className={cn(
+                            "w-12 h-6 rounded-full relative p-1 cursor-pointer transition-all",
+                            appPreferences.animations ? "bg-primary" : "bg-muted"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-4 h-4 bg-white rounded-full transition-all",
+                            appPreferences.animations ? "ml-auto" : ""
+                          )} />
                         </div>
                       </div>
                     </div>
@@ -348,16 +582,87 @@ export default function SettingsPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="p-8 lg:p-12 flex flex-col items-center justify-center text-center space-y-6 opacity-40 grayscale"
+                className="p-8 lg:p-12 space-y-10"
               >
-                <div className="w-24 h-24 rounded-full bg-accent flex items-center justify-center">
-                  <ShieldCheck size={48} className="text-muted-foreground" />
+                <div className="flex items-start justify-between gap-6">
+                  <div>
+                    <h3 className="text-2xl font-black uppercase tracking-tight">Lisensi & Aktivasi</h3>
+                    <p className="text-sm font-medium text-muted-foreground mt-1 max-w-2xl">
+                      Mode trial gratis: maksimal 250 transaksi penjualan atau 14 hari sejak pertama digunakan.
+                    </p>
+                  </div>
+                  <div className={cn(
+                    "px-4 py-2 rounded-2xl font-black text-xs uppercase tracking-widest border",
+                    license?.isPaid ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                  )}>
+                    {license?.isPaid ? 'Premium' : 'Trial'}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-2xl font-black uppercase tracking-tight">Pengaturan Keamanan</h3>
-                  <p className="text-sm font-medium text-muted-foreground mt-1 max-w-md mx-auto">
-                    Fitur otentikasi dua faktor (2FA) dan manajemen sesi perangkat sedang dikembangkan.
-                  </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Status Trial */}
+                  <div className="bg-accent/20 border border-border/40 rounded-[2rem] p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Status Trial</p>
+                      <ShieldCheck size={18} className="text-muted-foreground" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-bold text-muted-foreground">Transaksi terpakai</p>
+                        <p className="text-sm font-black">{license ? license.saleCount : '-'}</p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-bold text-muted-foreground">Sisa transaksi</p>
+                        <p className="text-sm font-black">{license ? license.trialTransactionsLeft : '-'}</p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-bold text-muted-foreground">Sisa hari</p>
+                        <p className="text-sm font-black">{license ? license.trialDaysLeft : '-'}</p>
+                      </div>
+                    </div>
+                    {!license?.isPaid && license?.trialExpired && (
+                      <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive">
+                        <p className="text-sm font-black uppercase tracking-widest">Trial sudah habis</p>
+                        <p className="text-xs font-bold mt-1">
+                          Silakan beli paket premium untuk terus menggunakan aplikasi.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Paket Premium */}
+                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-[2rem] p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-black text-primary uppercase tracking-widest">Paket Premium</p>
+                      <CheckCircle2 size={18} className="text-primary" />
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-end gap-2">
+                        <p className="text-3xl font-black text-primary">Rp 99.000</p>
+                        <p className="text-xs font-bold text-muted-foreground mb-1">/ bulan</p>
+                      </div>
+                      <ul className="space-y-2 text-sm">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 size={14} className="text-emerald-500" />
+                          <span>Unlimited transaksi</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 size={14} className="text-emerald-500" />
+                          <span>Support 24/7</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 size={14} className="text-emerald-500" />
+                          <span>Backup data otomatis</span>
+                        </li>
+                      </ul>
+                      {!license?.isPaid && (
+                        <button className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2">
+                          <CreditCard size={16} />
+                          Beli Paket
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}

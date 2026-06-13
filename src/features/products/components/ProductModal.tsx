@@ -1,10 +1,8 @@
 import { 
   X, 
-  Upload, 
   Save, 
   Package, 
   Tag, 
-  DollarSign, 
   Hash, 
   BarChart3,
   Image as ImageIcon
@@ -13,6 +11,8 @@ import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { Product } from '@/types'
 import { cn } from '@/lib/utils'
+import { useInventoryStore } from '@/store/useInventoryStore'
+import ComboBox from '@/components/ui/ComboBox'
 
 interface ProductModalProps {
   isOpen: boolean
@@ -21,15 +21,14 @@ interface ProductModalProps {
   product?: Product | null
 }
 
-const CATEGORIES = ['Makanan', 'Minuman', 'Elektronik', 'Fashion', 'Lainnya']
-
 export default function ProductModal({ isOpen, onClose, onSave, product }: ProductModalProps) {
+  const categories = useInventoryStore((s) => s.categories)
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
     price: 0,
     costPrice: 0,
     stock: 0,
-    category: 'Makanan',
+    category: '',
     sku: '',
     barcode: '',
     image: ''
@@ -44,19 +43,34 @@ export default function ProductModal({ isOpen, onClose, onSave, product }: Produ
         price: 0,
         costPrice: 0,
         stock: 0,
-        category: 'Makanan',
+        category: categories[0]?.id || '',
         sku: '',
         barcode: '',
         image: ''
       })
     }
-  }, [product, isOpen])
+  }, [product, isOpen, categories])
 
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSave(formData)
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran gambar maksimal 2MB')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      setFormData((prev) => ({ ...prev, image: result }))
+    }
+    reader.readAsDataURL(file)
   }
 
   return (
@@ -89,7 +103,7 @@ export default function ProductModal({ isOpen, onClose, onSave, product }: Produ
                   <p className="text-xs font-bold uppercase tracking-widest">Upload Gambar</p>
                 </>
               )}
-              <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" />
+              <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
             </div>
             
             <p className="text-xs font-medium text-muted-foreground leading-relaxed text-center px-4">
@@ -130,13 +144,15 @@ export default function ProductModal({ isOpen, onClose, onSave, product }: Produ
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">Kategori</label>
                 <div className="relative group">
                   <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                  <select 
-                    className="w-full h-14 pl-12 pr-4 rounded-2xl bg-accent/30 border-none ring-1 ring-border/40 focus:ring-2 focus:ring-primary/40 transition-all text-base font-bold appearance-none cursor-pointer"
-                    value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                  >
-                    {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                  </select>
+                  <ComboBox
+                    value={formData.category || ''}
+                    onChange={(v) => setFormData({ ...formData, category: v })}
+                    options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                    placeholder={categories.length === 0 ? 'Belum ada kategori' : 'Pilih kategori'}
+                    searchPlaceholder="Cari kategori..."
+                    emptyText="Kategori tidak ditemukan."
+                    disabled={categories.length === 0}
+                  />
                 </div>
               </div>
 

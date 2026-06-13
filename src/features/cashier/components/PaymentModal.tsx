@@ -12,8 +12,11 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useMemo } from 'react'
 import { usePosStore } from '@/store/usePosStore'
+import { useAuthStore } from '@/store/useAuthStore'
+import { transactionsRepo } from '@/repositories/transactionsRepo'
 import { cn } from '@/lib/utils'
 import ReceiptModal from './ReceiptModal'
+import { toast } from 'sonner'
 
 interface PaymentModalProps {
   isOpen: boolean
@@ -37,7 +40,8 @@ export default function PaymentModal({ isOpen, onClose, total }: PaymentModalPro
   const [showReceipt, setShowReceipt] = useState(false)
   const [transactionData, setTransactionData] = useState<any>(null)
   
-  const { cart, clearCart, getSubtotal, getTax } = usePosStore()
+  const { cart, clearCart, getSubtotal, getTax, getDiscountTotal, selectedCustomer } = usePosStore()
+  const { user, currentStore } = useAuthStore()
 
   const change = useMemo(() => {
     const paid = parseFloat(amountPaid) || 0
@@ -50,24 +54,39 @@ export default function PaymentModal({ isOpen, onClose, total }: PaymentModalPro
   }, [amountPaid, total, method])
 
   const handleProcessPayment = () => {
-    const data = {
-      id: Math.random().toString(36).substr(2, 9).toUpperCase(),
-      items: [...cart],
-      total: total,
-      subtotal: getSubtotal(),
-      tax: getTax(),
-      amountPaid: method === 'cash' ? (parseFloat(amountPaid) || 0) : total,
-      change: method === 'cash' ? (parseFloat(amountPaid) - total || 0) : 0,
-      method: method,
-      timestamp: new Date()
-    }
-    
-    setTransactionData(data)
-    setIsSuccess(true)
-    
-    setTimeout(() => {
-      setShowReceipt(true)
-    }, 2000)
+    void (async () => {
+      try {
+        const now = new Date()
+        const paid = method === 'cash' ? (parseFloat(amountPaid) || 0) : total
+
+        const localTx = await transactionsRepo.createSaleFromCart({
+          storeId: currentStore?.id || 'DEFAULT',
+          cashierId: user?.id || 'SYSTEM',
+          customerId: selectedCustomer?.id,
+          cartItems: cart,
+          paymentMethod: method as any,
+          subtotal: getSubtotal(),
+          tax: getTax(),
+          discountTotal: getDiscountTotal(),
+          total,
+          amountPaid: paid,
+          change: method === 'cash' ? Math.max(0, paid - total) : 0,
+          timestamp: now,
+        })
+
+        setTransactionData({
+          ...localTx,
+          customer: selectedCustomer
+        })
+        setIsSuccess(true)
+
+        setTimeout(() => {
+          setShowReceipt(true)
+        }, 500)
+      } catch (e: any) {
+        toast.error(e?.message ? String(e.message) : 'Pembayaran gagal diproses.')
+      }
+    })()
   }
 
   const handleCloseReceipt = () => {
@@ -114,7 +133,7 @@ export default function PaymentModal({ isOpen, onClose, total }: PaymentModalPro
         ) : (
           <>
             {/* Left: Summary */}
-            <div className="w-full md:w-[350px] bg-accent/20 p-8 border-b md:border-b-0 md:border-r border-border/40 flex flex-col">
+            <div className="w-full md:w-[350px] bg-accent/20 p-8 border-b md:border-b-0 md:border-r border-border/40 flex flex-col overflow-y-auto">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="font-black text-xl tracking-tight uppercase">Ringkasan</h3>
                 <button onClick={onClose} className="p-2 rounded-xl hover:bg-accent transition-all md:hidden">

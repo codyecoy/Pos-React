@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { Product, Transaction, User } from '@/types'
+import { Category, Customer, MasterProduct, Product, Store, Supplier, Transaction, User } from '@/types'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.pos-example.com/v1'
 
@@ -16,6 +16,11 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  const tenantId = localStorage.getItem('pos_tenant_id')
+  const storeId = localStorage.getItem('pos_store_id')
+  if (tenantId) (config.headers as any)['x-tenant-id'] = tenantId
+  if (storeId) (config.headers as any)['x-store-id'] = storeId
   return config
 })
 
@@ -36,6 +41,12 @@ export const productsApi = {
   create: (data: Partial<Product>) => apiClient.post<Product>('/products', data),
   update: (id: string, data: Partial<Product>) => apiClient.put<Product>(`/products/${id}`, data),
   delete: (id: string) => apiClient.delete(`/products/${id}`),
+  syncOffline: (products: Product[]) => apiClient.post('/products/sync', { products }),
+}
+
+export const categoriesApi = {
+  getAll: () => apiClient.get<Category[]>('/categories'),
+  syncOffline: (categories: Category[]) => apiClient.post('/categories/sync', { categories }),
 }
 
 export const transactionsApi = {
@@ -44,9 +55,29 @@ export const transactionsApi = {
   syncOffline: (transactions: Transaction[]) => apiClient.post('/transactions/sync', { transactions }),
 }
 
+export const customersApi = {
+  getAll: () => apiClient.get<Customer[]>('/customers'),
+  syncOffline: (customers: Customer[]) => apiClient.post('/customers/sync', { customers }),
+}
+
+export const suppliersApi = {
+  getAll: () => apiClient.get<Supplier[]>('/suppliers'),
+  syncOffline: (suppliers: Supplier[]) => apiClient.post('/suppliers/sync', { suppliers }),
+}
+
 export const authApi = {
   login: (credentials: any) => apiClient.post<{ user: User, token: string }>('/auth/login', credentials),
+  register: (data: any) => apiClient.post<{ user: User, token: string }>('/auth/register', data),
   refresh: () => apiClient.post<{ token: string }>('/auth/refresh'),
+}
+
+export const storesApi = {
+  list: () => apiClient.get<Store[]>('/stores'),
+  create: (data: Partial<Store>) => apiClient.post<Store>('/stores', data),
+}
+
+export const masterApi = {
+  productsBySegment: (segment: string) => apiClient.get<MasterProduct[]>(`/master/products?segment=${encodeURIComponent(segment)}`),
 }
 
 export default apiClient

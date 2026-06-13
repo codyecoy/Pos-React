@@ -154,7 +154,7 @@ export default function PurchaseModal({ isOpen, onClose, onSave, suppliers, prod
                         type="number"
                         className="w-24 h-7 px-2 rounded-lg bg-accent/50 border-none text-[10px] font-black focus:ring-1 focus:ring-primary/40"
                         value={item.costPrice}
-                        onChange={(e) => handleUpdateItem(item.productId, { costPrice: parseFloat(e.target.value) })}
+                        onChange={(e) => handleUpdateItem(item.productId, { costPrice: Number(e.target.value) || 0 })}
                       />
                     </div>
                   </div>

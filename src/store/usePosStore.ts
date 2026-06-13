@@ -1,17 +1,22 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Product, CartItem, Transaction } from '@/types'
+import { Product, CartItem, Transaction, Customer } from '@/types'
 
 interface PosState {
   cart: CartItem[]
   activeTransaction: Transaction | null
+  selectedCustomer: Customer | null
   
   // Cart Actions
   addToCart: (product: Product) => void
+  setCart: (items: CartItem[]) => void
   removeFromCart: (productId: string) => void
   updateQuantity: (productId: string, quantity: number) => void
   updateDiscount: (productId: string, discount: number) => void
   clearCart: () => void
+  
+  // Customer Actions
+  setSelectedCustomer: (customer: Customer | null) => void
   
   // Transaction Actions
   setHold: () => void
@@ -31,6 +36,7 @@ export const usePosStore = create<PosState>()(
     (set, get) => ({
       cart: [],
       activeTransaction: null,
+      selectedCustomer: null,
 
       addToCart: (product) => {
         const { cart } = get()
@@ -48,6 +54,8 @@ export const usePosStore = create<PosState>()(
           set({ cart: [...cart, { ...product, quantity: 1, discount: 0 }] })
         }
       },
+
+      setCart: (items) => set({ cart: items }),
 
       removeFromCart: (productId) => {
         set({ cart: get().cart.filter((item) => item.id !== productId) })
@@ -73,7 +81,9 @@ export const usePosStore = create<PosState>()(
         })
       },
 
-      clearCart: () => set({ cart: [] }),
+      clearCart: () => set({ cart: [], selectedCustomer: null }),
+
+      setSelectedCustomer: (customer) => set({ selectedCustomer: customer }),
 
       setHold: () => {
         // Implement hold logic if needed
@@ -81,7 +91,7 @@ export const usePosStore = create<PosState>()(
 
       completePayment: (payment) => {
         // Implement completion logic
-        set({ cart: [] })
+        set({ cart: [], selectedCustomer: null })
       },
 
       getSubtotal: () => {

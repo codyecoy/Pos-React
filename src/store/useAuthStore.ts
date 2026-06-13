@@ -10,6 +10,8 @@ interface AuthState {
   login: (user: User, stores: Store[]) => void
   logout: () => void
   switchStore: (storeId: string) => void
+  addStore: (store: Store) => void
+  setStores: (stores: Store[]) => void
 }
 
 const MOCK_STORES: Store[] = [
@@ -24,19 +26,43 @@ export const useAuthStore = create<AuthState>()(
       currentStore: null,
       stores: [],
       isLoggedIn: false,
-      login: (user, stores) => set({ 
-        user, 
-        stores, 
-        currentStore: stores[0] || null, 
-        isLoggedIn: true 
-      }),
+      login: (user, stores) => {
+        const firstStore = stores[0] || null
+        const tenantId = (user as any)?.tenantId || user?.id
+        if (tenantId) localStorage.setItem('pos_tenant_id', String(tenantId))
+        if (firstStore?.id) localStorage.setItem('pos_store_id', String(firstStore.id))
+        set({
+          user,
+          stores,
+          currentStore: firstStore,
+          isLoggedIn: true,
+        })
+        window.location.reload()
+      },
       logout: () => {
         localStorage.removeItem('isLoggedIn')
+        localStorage.removeItem('pos_tenant_id')
+        localStorage.removeItem('pos_store_id')
         set({ user: null, currentStore: null, stores: [], isLoggedIn: false })
       },
       switchStore: (storeId) => {
         const store = get().stores.find(s => s.id === storeId)
-        if (store) set({ currentStore: store })
+        if (!store) return
+        localStorage.setItem('pos_store_id', String(store.id))
+        set({ currentStore: store })
+        window.location.reload()
+      },
+      addStore: (store) => {
+        const nextStores = [...get().stores, store]
+        localStorage.setItem('pos_store_id', String(store.id))
+        set({ stores: nextStores, currentStore: store })
+        window.location.reload()
+      },
+      setStores: (stores) => {
+        const current = get().currentStore
+        const nextCurrent = current ? (stores.find((s) => s.id === current.id) || stores[0] || null) : (stores[0] || null)
+        if (nextCurrent?.id) localStorage.setItem('pos_store_id', String(nextCurrent.id))
+        set({ stores, currentStore: nextCurrent })
       },
     }),
     {

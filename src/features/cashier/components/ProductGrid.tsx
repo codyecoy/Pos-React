@@ -10,6 +10,9 @@ interface ProductGridProps {
 
 export default function ProductGrid({ products, isLoading }: ProductGridProps) {
   const addToCart = usePosStore((state) => state.addToCart)
+  const fallbackImage = `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#cbd5e1"/></linearGradient></defs><rect width="400" height="300" fill="url(#g)"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700">PRODUK</text></svg>`
+  )}`
 
   if (isLoading) {
     return (
@@ -38,8 +41,12 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
             {/* Image Section */}
             <div className="aspect-[4/3] w-full overflow-hidden bg-accent/20 relative">
               <img 
-                src={product.image || 'https://via.placeholder.com/200?text=Produk'} 
+                src={product.image || fallbackImage} 
                 alt={product.name}
+                onError={(e) => {
+                  const img = e.currentTarget
+                  if (img.src !== fallbackImage) img.src = fallbackImage
+                }}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
               <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">

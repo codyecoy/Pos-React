@@ -17,8 +17,6 @@ interface Customer {
   phone: string
   email: string
   address: string
-  points: number
-  totalSpent: number
 }
 
 interface CustomerModalProps {
@@ -34,7 +32,6 @@ export default function CustomerModal({ isOpen, onClose, onSave, customer }: Cus
     phone: '',
     email: '',
     address: '',
-    points: 0
   })
 
   useEffect(() => {
@@ -46,7 +43,6 @@ export default function CustomerModal({ isOpen, onClose, onSave, customer }: Cus
         phone: '',
         email: '',
         address: '',
-        points: 0
       })
     }
   }, [customer, isOpen])

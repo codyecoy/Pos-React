@@ -19,15 +19,13 @@ interface SupplierModalProps {
   supplier?: Supplier | null
 }
 
-const CATEGORIES = ['Bahan Baku', 'Minuman Kemasan', 'Snack', 'Peralatan', 'Lainnya']
-
 export default function SupplierModal({ isOpen, onClose, onSave, supplier }: SupplierModalProps) {
   const [formData, setFormData] = useState<Partial<Supplier>>({
     name: '',
     phone: '',
     email: '',
     address: '',
-    category: 'Bahan Baku'
+    category: ''
   })
 
   useEffect(() => {
@@ -39,7 +37,7 @@ export default function SupplierModal({ isOpen, onClose, onSave, supplier }: Sup
         phone: '',
         email: '',
         address: '',
-        category: 'Bahan Baku'
+        category: ''
       })
     }
   }, [supplier, isOpen])
@@ -98,13 +96,13 @@ export default function SupplierModal({ isOpen, onClose, onSave, supplier }: Sup
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">Kategori</label>
                 <div className="relative group">
                   <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                  <select 
-                    className="w-full h-14 pl-12 pr-4 rounded-2xl bg-accent/30 border-none ring-1 ring-border/40 focus:ring-2 focus:ring-primary/40 transition-all text-base font-bold appearance-none cursor-pointer"
+                  <input
+                    type="text"
+                    className="w-full h-14 pl-12 pr-4 rounded-2xl bg-accent/30 border-none ring-1 ring-border/40 focus:ring-2 focus:ring-primary/40 transition-all text-base font-bold"
+                    placeholder="Contoh: Bahan Baku"
                     value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                  >
-                    {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                  </select>
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  />
                 </div>
               </div>
 

@@ -8,6 +8,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { usePosStore } from '@/store/usePosStore'
 import { useInventoryStore } from '@/store/useInventoryStore'
 import { toast } from 'sonner'
+import { useConfirm } from '@/components/ui/confirm'
 
 export default function CashierPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -17,6 +18,7 @@ export default function CashierPage() {
   
   const { cart, addToCart, clearCart } = usePosStore()
   const { products } = useInventoryStore()
+  const confirm = useConfirm()
 
   // Barcode scanning logic (simulated for keyboard-based scanners)
   const barcodeBuffer = useRef<string>('')
@@ -62,9 +64,18 @@ export default function CashierPage() {
   useKeyboardShortcuts({
     onSearch: () => searchInputRef.current?.focus(),
     onClear: () => {
-      if (cart.length > 0 && confirm('Kosongkan keranjang?')) {
+      if (cart.length === 0) return
+      void (async () => {
+        const ok = await confirm({
+          title: 'Kosongkan Keranjang',
+          description: 'Kosongkan semua item di keranjang?',
+          confirmText: 'Kosongkan',
+          cancelText: 'Batal',
+          destructive: true,
+        })
+        if (!ok) return
         clearCart()
-      }
+      })()
     }
   })
 

@@ -15,11 +15,34 @@ import Sidebar from './components/layout/Sidebar'
 import Header from './components/layout/Header'
 import { Toaster } from 'sonner'
 import { useAuthStore } from './store/useAuthStore'
+import { useInventoryStore } from '@/store/useInventoryStore'
+import { startSyncEngine, syncDownFromServer } from '@/sync/syncEngine'
+import { ConfirmProvider } from '@/components/ui/confirm'
+import { ensureLicenseValidOrReset } from '@/repositories/transactionsRepo'
 
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const { isLoggedIn, logout } = useAuthStore()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (!isLoggedIn) return
+    void (async () => {
+      await ensureLicenseValidOrReset()
+      try {
+        await syncDownFromServer()
+      } catch {
+      } finally {
+        useInventoryStore.getState().hydrate()
+      }
+    })()
+  }, [isLoggedIn])
+
+  useEffect(() => {
+    if (!isLoggedIn) return
+    const stop = startSyncEngine()
+    return () => stop()
+  }, [isLoggedIn])
 
   useEffect(() => {
     if (isDarkMode) {
@@ -31,54 +54,59 @@ function App() {
 
   if (!isLoggedIn) {
     return (
-      <Router>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-        <Toaster position="top-right" richColors />
-      </Router>
+      <ConfirmProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<LoginPage />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+          <Toaster position="top-right" richColors />
+        </Router>
+      </ConfirmProvider>
     )
   }
 
   return (
-    <Router>
-      <div className="flex h-screen bg-background overflow-hidden">
-        <Sidebar onLogout={logout} />
-        {isMobileMenuOpen && (
-          <Sidebar 
-            onLogout={logout} 
-            isMobile 
-            onClose={() => setIsMobileMenuOpen(false)} 
-          />
-        )}
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          <Header 
-            isDarkMode={isDarkMode} 
-            toggleDarkMode={() => setIsDarkMode(!isDarkMode)} 
-            onLogout={logout}
-            onMenuClick={() => setIsMobileMenuOpen(true)}
-          />
-          <main className="flex-1 overflow-y-auto p-4 tablet:p-6">
-            <Routes>
-              <Route path="/" element={<Navigate to="/cashier" replace />} />
-              <Route path="/cashier" element={<CashierPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/products" element={<ProductsPage />} />
-              <Route path="/customers" element={<CustomersPage />} />
-              <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/audit-log" element={<AuditLogPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/suppliers" element={<SuppliersPage />} />
-              <Route path="/purchasing" element={<PurchasingPage />} />
-              <Route path="/debts" element={<DebtsPage />} />
-              <Route path="*" element={<Navigate to="/cashier" replace />} />
-            </Routes>
-          </main>
+    <ConfirmProvider>
+      <Router>
+        <div className="flex h-screen bg-background overflow-hidden">
+          <Sidebar onLogout={logout} />
+          {isMobileMenuOpen && (
+            <Sidebar 
+              onLogout={logout} 
+              isMobile 
+              onClose={() => setIsMobileMenuOpen(false)} 
+            />
+          )}
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            <Header 
+              isDarkMode={isDarkMode} 
+              toggleDarkMode={() => setIsDarkMode(!isDarkMode)} 
+              onLogout={logout}
+              onMenuClick={() => setIsMobileMenuOpen(true)}
+            />
+            <main className="flex-1 overflow-y-auto p-4 tablet:p-6">
+              <Routes>
+                <Route path="/" element={<Navigate to="/cashier" replace />} />
+                <Route path="/cashier" element={<CashierPage />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/products" element={<ProductsPage />} />
+                <Route path="/customers" element={<CustomersPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/audit-log" element={<AuditLogPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/suppliers" element={<SuppliersPage />} />
+                <Route path="/purchasing" element={<PurchasingPage />} />
+                <Route path="/debts" element={<DebtsPage />} />
+                <Route path="*" element={<Navigate to="/cashier" replace />} />
+              </Routes>
+            </main>
+          </div>
         </div>
-      </div>
-      <Toaster position="top-right" richColors />
-    </Router>
+        <Toaster position="top-right" richColors />
+      </Router>
+    </ConfirmProvider>
   )
 }
 
