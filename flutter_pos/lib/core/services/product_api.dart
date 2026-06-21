@@ -1,21 +1,37 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_pos/core/services/api_client.dart';
-import 'package:flutter_pos/features/products/data/models/product_model.dart';
 
 class ProductApi {
-  final ApiClient _apiClient;
+  final Dio dio;
 
-  ProductApi(this._apiClient);
+  ProductApi(this.dio);
 
-  Future<List<ProductModel>> getAll() async {
-    final response = await _apiClient.dio.get('/products');
-    return (response.data as List)
-        .map((e) => ProductModel.fromJson(e))
-        .toList();
+  Future<List<dynamic>> getAll() async {
+    final response = await dio.get('/products');
+    return response.data as List;
   }
 
-  Future<ProductModel> getById(String id) async {
-    final response = await _apiClient.dio.get('/products/$id');
-    return ProductModel.fromJson(response.data);
+  Future<List<dynamic>> getMasterProducts(String segment) async {
+    final response = await dio.get('/master/products?segment=$segment');
+    return response.data as List;
+  }
+
+  Future<dynamic> getById(String id) async {
+    final response = await dio.get('/products/$id');
+    return response.data;
+  }
+
+  Future<dynamic> create(Map<String, dynamic> data) async {
+    final response = await dio.post('/products', data: data);
+    return response.data;
+  }
+
+  Future<dynamic> update(String id, Map<String, dynamic> data) async {
+    final response = await dio.put('/products/$id', data: data);
+    return response.data;
+  }
+
+  Future<dynamic> delete(String id) async {
+    final response = await dio.delete('/products/$id');
+    return response.data;
   }
 }

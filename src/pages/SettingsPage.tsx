@@ -21,74 +21,45 @@ import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { activateLicense, getLicenseStatus } from '@/repositories/transactionsRepo'
-import { settingsRepo } from '@/repositories/settingsRepo'
+import { useSettingsStore } from '@/store/useSettingsStore'
 import { capitalizeWords, formatPhoneNumber } from '@/lib/formatters'
-import type { StoreSettings, ReceiptSettings, AppPreferences } from '@/types'
 
 type TabType = 'store' | 'receipt' | 'app' | 'security'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('store')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [activationCode, setActivationCode] = useState('')
   const [isActivating, setIsActivating] = useState(false)
   
-  // Store Settings State
-  const [storeSettings, setStoreSettings] = useState<StoreSettings>({
-    name: '',
-    phone: '',
-    address: '',
-    currency: 'IDR',
-    timezone: 'Asia/Jakarta',
-  })
-  
-  // Receipt Settings State
-  const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings>({
-    showLogo: true,
-    headerMessage: '',
-    footerMessage: '',
-    showQrCode: true,
-  })
-  
-  // App Preferences State
-  const [appPreferences, setAppPreferences] = useState<AppPreferences>({
-    scanSound: true,
-    lowStockNotification: true,
-    autoDarkMode: false,
-    animations: true,
-  })
+  const {
+    storeSettings,
+    receiptSettings,
+    appPreferences,
+    isLoading,
+    loadSettings,
+    saveSettings,
+    setStoreSettings: updateStoreSettings,
+    setReceiptSettings: updateReceiptSettings,
+    setAppPreferences: updateAppPreferences
+  } = useSettingsStore()
 
   const license = useLiveQuery(async () => getLicenseStatus(), [], null)
   
   // Load settings on mount
-  const loadSettings = async () => {
-    const [store, receipt, app] = await Promise.all([
-      settingsRepo.getStoreSettings(),
-      settingsRepo.getReceiptSettings(),
-      settingsRepo.getAppPreferences(),
-    ])
-    setStoreSettings(store)
-    setReceiptSettings(receipt)
-    setAppPreferences(app)
-  }
-
   useEffect(() => {
     loadSettings()
-  }, [])
+  }, [loadSettings])
 
   const handleSave = async () => {
-    setIsLoading(true)
+    setIsSaving(true)
     try {
-      await Promise.all([
-        settingsRepo.saveStoreSettings(storeSettings),
-        settingsRepo.saveReceiptSettings(receiptSettings),
-        settingsRepo.saveAppPreferences(appPreferences),
-      ])
+      await saveSettings()
       toast.success('Pengaturan berhasil disimpan!')
     } catch (error) {
       toast.error('Gagal menyimpan pengaturan.')
     } finally {
-      setIsLoading(false)
+      setIsSaving(false)
     }
   }
 
@@ -98,7 +69,7 @@ export default function SettingsPage() {
       const reader = new FileReader()
       reader.onload = (event) => {
         const result = event.target?.result as string
-        setStoreSettings(prev => ({ ...prev, logo: result }))
+        updateStoreSettings({ logo: result })
         toast.success('Logo berhasil diupload!')
       }
       reader.readAsDataURL(file)
@@ -106,36 +77,34 @@ export default function SettingsPage() {
   }
 
   const handleStoreNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setStoreSettings(prev => ({ ...prev, name: capitalizeWords(e.target.value) }))
+    updateStoreSettings({ name: capitalizeWords(e.target.value) })
   }
 
   const handleStorePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setStoreSettings(prev => ({ ...prev, phone: formatPhoneNumber(e.target.value) }))
+    updateStoreSettings({ phone: formatPhoneNumber(e.target.value) })
   }
 
   const handleStoreAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setStoreSettings(prev => ({ ...prev, address: capitalizeWords(e.target.value) }))
+    updateStoreSettings({ address: capitalizeWords(e.target.value) })
   }
 
   const handleSocialInstagramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setStoreSettings(prev => ({ 
-      ...prev, 
-      socialMedia: { ...prev.socialMedia, instagram: e.target.value }
-    }))
+    updateStoreSettings({ 
+      socialMedia: { ...storeSettings.socialMedia, instagram: e.target.value }
+    })
   }
 
   const handleSocialWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setStoreSettings(prev => ({ 
-      ...prev, 
-      socialMedia: { ...prev.socialMedia, website: e.target.value.toLowerCase() }
-    }))
+    updateStoreSettings({ 
+      socialMedia: { ...storeSettings.socialMedia, website: e.target.value.toLowerCase() }
+    })
   }
 
-  const toggleSwitch = (key: keyof ReceiptSettings | keyof AppPreferences, value: boolean) => {
+  const toggleSwitch = (key: keyof typeof receiptSettings | keyof typeof appPreferences, value: boolean) => {
     if (key in receiptSettings) {
-      setReceiptSettings(prev => ({ ...prev, [key]: value }))
+      updateReceiptSettings({ [key]: value })
     } else if (key in appPreferences) {
-      setAppPreferences(prev => ({ ...prev, [key]: value }))
+      updateAppPreferences({ [key]: value })
     }
   }
 
@@ -159,10 +128,10 @@ export default function SettingsPage() {
         
         <button 
           onClick={handleSave}
-          disabled={isLoading}
+          disabled={isSaving}
           className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-primary text-primary-foreground font-black text-base shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
         >
-          {isLoading ? (
+          {isSaving ? (
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             <Save size={20} strokeWidth={2.5} />
@@ -243,11 +212,11 @@ export default function SettingsPage() {
                       <div className="space-y-2">
                         <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">Nama Toko</label>
                         <input 
-                      type="text" 
-                      value={storeSettings.name}
-                      onChange={handleStoreNameChange}
-                      className="w-full h-14 px-6 rounded-2xl bg-accent/30 border-none ring-1 ring-border/40 focus:ring-2 focus:ring-primary/40 transition-all text-base font-bold"
-                    />
+                          type="text" 
+                          value={storeSettings.name}
+                          onChange={handleStoreNameChange}
+                          className="w-full h-14 px-6 rounded-2xl bg-accent/30 border-none ring-1 ring-border/40 focus:ring-2 focus:ring-primary/40 transition-all text-base font-bold"
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">No. Telepon Bisnis</label>
@@ -263,7 +232,7 @@ export default function SettingsPage() {
                       <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">Alamat Kantor Pusat</label>
                       <textarea 
                         value={storeSettings.address}
-                        onChange={(e) => setStoreSettings(prev => ({ ...prev, address: e.target.value }))}
+                        onChange={handleStoreAddressChange}
                         className="w-full h-28 p-6 rounded-2xl bg-accent/30 border-none ring-1 ring-border/40 focus:ring-2 focus:ring-primary/40 transition-all text-base font-bold resize-none"
                       />
                     </div>
@@ -285,10 +254,7 @@ export default function SettingsPage() {
                           type="text" 
                           placeholder="@instagram_toko" 
                           value={storeSettings.socialMedia?.instagram || ''}
-                          onChange={(e) => setStoreSettings(prev => ({
-                            ...prev,
-                            socialMedia: { ...prev.socialMedia, instagram: e.target.value }
-                          }))}
+                          onChange={handleSocialInstagramChange}
                           className="flex-1 bg-transparent border-none text-sm font-bold focus:ring-0" 
                         />
                       </div>
@@ -300,10 +266,7 @@ export default function SettingsPage() {
                           type="text" 
                           placeholder="www.website.com" 
                           value={storeSettings.socialMedia?.website || ''}
-                          onChange={(e) => setStoreSettings(prev => ({
-                            ...prev,
-                            socialMedia: { ...prev.socialMedia, website: e.target.value }
-                          }))}
+                          onChange={handleSocialWebsiteChange}
                           className="flex-1 bg-transparent border-none text-sm font-bold focus:ring-0" 
                         />
                       </div>
@@ -320,7 +283,7 @@ export default function SettingsPage() {
                         <p className="text-[10px] font-black text-muted-foreground uppercase ml-2">Mata Uang</p>
                         <select 
                           value={storeSettings.currency}
-                          onChange={(e) => setStoreSettings(prev => ({ ...prev, currency: e.target.value }))}
+                          onChange={(e) => updateStoreSettings({ currency: e.target.value })}
                           className="w-full h-12 px-4 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold"
                         >
                           <option value="IDR">IDR (Rp)</option>
@@ -331,7 +294,7 @@ export default function SettingsPage() {
                         <p className="text-[10px] font-black text-muted-foreground uppercase ml-2">Zona Waktu</p>
                         <select 
                           value={storeSettings.timezone}
-                          onChange={(e) => setStoreSettings(prev => ({ ...prev, timezone: e.target.value }))}
+                          onChange={(e) => updateStoreSettings({ timezone: e.target.value })}
                           className="w-full h-12 px-4 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold"
                         >
                           <option value="Asia/Jakarta">Asia/Jakarta (WIB)</option>
@@ -339,6 +302,47 @@ export default function SettingsPage() {
                           <option value="Asia/Jayapura">Asia/Jayapura (WIT)</option>
                         </select>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
+                      <CreditCard size={18} className="text-primary" />
+                      Pajak (PPN)
+                    </h4>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-accent/30 rounded-2xl border border-border/40">
+                        <div>
+                          <p className="font-bold text-sm">Pakai PPN</p>
+                          <p className="text-xs text-muted-foreground">Menghitung pajak PPN pada transaksi.</p>
+                        </div>
+                        <div 
+                          onClick={() => updateStoreSettings({ useVAT: !storeSettings.useVAT })}
+                          className={cn(
+                            "w-12 h-6 rounded-full relative p-1 cursor-pointer transition-all",
+                            storeSettings.useVAT ? "bg-primary" : "bg-muted"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-4 h-4 bg-white rounded-full transition-all",
+                            storeSettings.useVAT ? "ml-auto" : ""
+                          )} />
+                        </div>
+                      </div>
+                      {storeSettings.useVAT && (
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black text-muted-foreground uppercase ml-2">Tarif PPN (%)</p>
+                          <input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={storeSettings.vatRate}
+                            onChange={(e) => updateStoreSettings({ vatRate: Number(e.target.value) })}
+                            className="w-full h-12 px-4 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -384,7 +388,7 @@ export default function SettingsPage() {
                           <input 
                             type="text" 
                             value={receiptSettings.headerMessage}
-                            onChange={(e) => setReceiptSettings(prev => ({ ...prev, headerMessage: e.target.value }))}
+                            onChange={(e) => updateReceiptSettings({ headerMessage: e.target.value })}
                             className="w-full h-12 px-6 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold focus:ring-2 focus:ring-primary/40 transition-all" 
                           />
                         </div>
@@ -401,7 +405,7 @@ export default function SettingsPage() {
                           <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-4 block">Pesan Penutup (Footer)</label>
                           <textarea 
                             value={receiptSettings.footerMessage}
-                            onChange={(e) => setReceiptSettings(prev => ({ ...prev, footerMessage: e.target.value }))}
+                            onChange={(e) => updateReceiptSettings({ footerMessage: e.target.value })}
                             className="w-full h-24 p-4 rounded-xl bg-accent/30 border-none ring-1 ring-border/40 text-sm font-bold resize-none focus:ring-2 focus:ring-primary/40 transition-all" 
                           />
                         </div>

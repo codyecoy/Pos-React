@@ -13,6 +13,7 @@ import {
   Users
 } from 'lucide-react'
 import { usePosStore } from '@/store/usePosStore'
+import { useSettingsStore } from '@/store/useSettingsStore'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -45,6 +46,7 @@ export default function CartPanel() {
     setSelectedCustomer
   } = usePosStore()
   const { user, currentStore } = useAuthStore()
+  const { useVAT, vatRate } = useSettingsStore((state) => state.storeSettings)
 
   const subtotal = getSubtotal()
   const tax = getTax()
@@ -305,13 +307,15 @@ export default function CartPanel() {
               <span>Subtotal</span>
               <span className="text-foreground">Rp {subtotal.toLocaleString('id-ID')}</span>
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-1.5">
-                <span>Pajak</span>
-                <span className="px-1.5 py-0.5 rounded-md bg-accent text-[10px] font-bold">11%</span>
+            {useVAT && (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span>Pajak</span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-accent text-[10px] font-bold">{vatRate}%</span>
+                </div>
+                <span className="text-foreground">Rp {tax.toLocaleString('id-ID')}</span>
               </div>
-              <span className="text-foreground">Rp {tax.toLocaleString('id-ID')}</span>
-            </div>
+            )}
           </div>
 
           <div className="text-right">

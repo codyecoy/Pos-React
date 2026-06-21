@@ -1,21 +1,17 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_pos/core/services/api_client.dart';
-import 'package:flutter_pos/features/transactions/data/models/transaction_model.dart';
 
 class TransactionApi {
-  final ApiClient _apiClient;
+  final Dio dio;
 
-  TransactionApi(this._apiClient);
+  TransactionApi(this.dio);
 
-  Future<List<TransactionModel>> getAll() async {
-    final response = await _apiClient.dio.get('/transactions');
-    return (response.data as List)
-        .map((e) => TransactionModel.fromJson(e))
-        .toList();
+  Future<List<dynamic>> getAll() async {
+    final response = await dio.get('/transactions');
+    return response.data as List;
   }
 
-  Future<TransactionModel> create(Map<String, dynamic> data) async {
-    final response = await _apiClient.dio.post('/transactions', data: data);
-    return TransactionModel.fromJson(response.data);
+  Future<dynamic> create(Map<String, dynamic> data) async {
+    final response = await dio.post('/transactions', data: data);
+    return response.data;
   }
 }

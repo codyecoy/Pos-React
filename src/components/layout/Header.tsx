@@ -195,15 +195,14 @@ export default function Header({ isDarkMode, toggleDarkMode, onLogout, onMenuCli
 
               <button
                 onClick={() => {
+                  toast.info('Fitur tambah cabang hanya tersedia di paket Premium.')
                   setIsStoreMenuOpen(false)
-                  setIsAddStoreOpen(true)
-                  setNewStoreName('')
-                  setNewStoreAddress('')
-                  setNewStorePhone('')
                 }}
-                className="w-full mt-1 px-4 py-3 rounded-xl text-left hover:bg-accent transition-all text-sm font-black uppercase tracking-widest"
+                className="w-full mt-1 px-4 py-3 rounded-xl text-left transition-all text-sm font-black uppercase tracking-widest bg-accent/30 text-muted-foreground cursor-not-allowed flex items-center justify-between"
+                disabled
               >
                 + Tambah Cabang
+                <span className="text-[9px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded-full">PRO</span>
               </button>
             </div>
           )}

@@ -1,48 +1,91 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:json_annotation/json_annotation.dart';
+class CartItemModel {
+  final String id;
+  final String name;
+  final double price;
+  final double costPrice;
+  final int stock;
+  final String category;
+  final String image;
+  final String barcode;
+  final String sku;
+  int quantity;
+  double discount;
+  final String? note;
 
-part 'transaction_model.freezed.dart';
-part 'transaction_model.g.dart';
+  CartItemModel({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.costPrice,
+    required this.stock,
+    required this.category,
+    required this.image,
+    required this.barcode,
+    required this.sku,
+    required this.quantity,
+    required this.discount,
+    this.note,
+  });
 
-@freezed
-class CartItemModel with _$CartItemModel {
-  const factory CartItemModel({
-    required String id,
-    required String name,
-    required double price,
-    required double costPrice,
-    required int stock,
-    required String category,
-    required String image,
-    required String barcode,
-    required String sku,
-    required int quantity,
-    required double discount,
+  CartItemModel copyWith({
+    String? id,
+    String? name,
+    double? price,
+    double? costPrice,
+    int? stock,
+    String? category,
+    String? image,
+    String? barcode,
+    String? sku,
+    int? quantity,
+    double? discount,
     String? note,
-  }) = _CartItemModel;
-
-  factory CartItemModel.fromJson(Map<String, dynamic> json) =>
-      _$CartItemModelFromJson(json);
+  }) {
+    return CartItemModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      price: price ?? this.price,
+      costPrice: costPrice ?? this.costPrice,
+      stock: stock ?? this.stock,
+      category: category ?? this.category,
+      image: image ?? this.image,
+      barcode: barcode ?? this.barcode,
+      sku: sku ?? this.sku,
+      quantity: quantity ?? this.quantity,
+      discount: discount ?? this.discount,
+      note: note ?? this.note,
+    );
+  }
 }
 
-@freezed
-class TransactionModel with _$TransactionModel {
-  const factory TransactionModel({
-    required String id,
-    required List<CartItemModel> items,
-    required double subtotal,
-    required double tax,
-    required double discountTotal,
-    required double total,
-    required String paymentMethod,
-    required double amountPaid,
-    required double change,
-    required DateTime timestamp,
-    required String cashierId,
-    String? customerId,
-    required String status,
-  }) = _TransactionModel;
+class TransactionModel {
+  final String id;
+  final List<CartItemModel> items;
+  final double subtotal;
+  final double tax;
+  final double discountTotal;
+  final double total;
+  final String paymentMethod;
+  final double amountPaid;
+  final double changeAmount; // <-- Fixed: backend uses changeAmount, not change
+  final DateTime timestamp;
+  final String cashierId;
+  final String? customerId;
+  final String status;
 
-  factory TransactionModel.fromJson(Map<String, dynamic> json) =>
-      _$TransactionModelFromJson(json);
+  TransactionModel({
+    required this.id,
+    required this.items,
+    required this.subtotal,
+    required this.tax,
+    required this.discountTotal,
+    required this.total,
+    required this.paymentMethod,
+    required this.amountPaid,
+    required this.changeAmount,
+    required this.timestamp,
+    required this.cashierId,
+    this.customerId,
+    required this.status,
+  });
 }

@@ -1,7 +1,7 @@
 class AppConstants {
   static const String baseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'https://api.pos-example.com/v1',
+    defaultValue: 'https://api-kasir.bimasolution.com',
   );
 
   static const double mobileBreakpoint = 600.0;

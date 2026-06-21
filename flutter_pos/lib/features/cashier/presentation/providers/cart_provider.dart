@@ -8,13 +8,11 @@ class CartNotifier extends StateNotifier<List<CartItemModel>> {
   void addItem(ProductModel product) {
     final existingIndex = state.indexWhere((item) => item.id == product.id);
     if (existingIndex >= 0) {
-      state = [
-        for (int i = 0; i < state.length; i++)
-          if (i == existingIndex)
-            state[i].copyWith(quantity: state[i].quantity + 1)
-          else
-            state[i]
-      ];
+      final newState = [...state];
+      newState[existingIndex] = newState[existingIndex].copyWith(
+        quantity: newState[existingIndex].quantity + 1,
+      );
+      state = newState;
     } else {
       state = [
         ...state,
@@ -40,13 +38,23 @@ class CartNotifier extends StateNotifier<List<CartItemModel>> {
       removeItem(productId);
       return;
     }
-    state = [
-      for (final item in state)
-        if (item.id == productId)
-          item.copyWith(quantity: quantity)
-        else
-          item
-    ];
+    final newState = state.map((item) {
+      if (item.id == productId) {
+        return item.copyWith(quantity: quantity);
+      }
+      return item;
+    }).toList();
+    state = newState;
+  }
+
+  void updateDiscount(String productId, double discount) {
+    final newState = state.map((item) {
+      if (item.id == productId) {
+        return item.copyWith(discount: discount);
+      }
+      return item;
+    }).toList();
+    state = newState;
   }
 
   void removeItem(String productId) {
@@ -57,8 +65,52 @@ class CartNotifier extends StateNotifier<List<CartItemModel>> {
     state = [];
   }
 
-  double get subtotal => state.fold(0, (sum, item) => sum + (item.price * item.quantity));
+  // Calculations
+  double get subtotal => state.fold(
+      0, (sum, item) => sum + (item.price * item.quantity));
+
+  double get discountTotal => state.fold(
+      0, (sum, item) => sum + item.discount);
+
+  // Default tax rate: adjust as needed (or get from settings)
+  double get taxRate => 0.1; // 10%
+
+  double get tax => (subtotal - discountTotal) * taxRate;
+
+  double get total => (subtotal - discountTotal) + tax;
+
   int get totalItems => state.fold(0, (sum, item) => sum + item.quantity);
+
+  // Prepare transaction data for API
+  Map<String, dynamic> toTransactionData({
+    required String paymentMethod,
+    required double amountPaid,
+    String? customerId,
+    String? cashierId,
+    String? storeId,
+  }) {
+    return {
+      'storeId': storeId,
+      'cashierId': cashierId,
+      'customerId': customerId,
+      'items': state.map((item) => {
+        'productId': item.id,
+        'name': item.name,
+        'price': item.price,
+        'costPrice': item.costPrice,
+        'quantity': item.quantity,
+        'discount': item.discount,
+        'subtotal': (item.price * item.quantity) - item.discount,
+      }).toList(),
+      'subtotal': subtotal,
+      'tax': tax,
+      'discountTotal': discountTotal,
+      'total': total,
+      'paymentMethod': paymentMethod,
+      'amountPaid': amountPaid,
+      'changeAmount': amountPaid - total,
+    };
+  }
 }
 
 final cartProvider = StateNotifierProvider<CartNotifier, List<CartItemModel>>((ref) {

@@ -117,6 +117,8 @@ export type SyncEntityType =
   | 'customer'
   | 'transaction'
   | 'stock_movement'
+  | 'coa'
+  | 'cash_transaction'
 
 export type SyncAction = 'upsert' | 'delete' | 'void'
 
@@ -164,6 +166,8 @@ export interface StoreSettings {
   }
   currency: string
   timezone: string
+  useVAT: boolean // Toggle untuk penggunaan PPN
+  vatRate: number // Tarif PPN dalam persen (contoh: 11 untuk 11%)
 }
 
 export interface ReceiptSettings {
@@ -180,14 +184,25 @@ export interface AppPreferences {
   animations: boolean
 }
 
-export interface User {
+export interface User extends SyncFields {
   id: string
   tenantId?: string
   name: string
+  username: string
   role: 'admin' | 'manager' | 'cashier'
   avatar?: string
-  password?: string
+  password: string
   email?: string
+  phone?: string
+  storeIds: string[] // List of store IDs the user has access to
+  isActive: boolean
+}
+
+export interface UserStoreAssignment {
+  id: string
+  userId: string
+  storeId: string
+  createdAt: Date
 }
 
 export interface Store {
@@ -267,4 +282,33 @@ export interface DebtPayment {
   amount: number
   method: string
   timestamp: Date
+}
+
+// Chart of Accounts (COA)
+export interface COA extends SyncFields {
+  id: string
+  code: string // Kode akun (contoh: 1101 untuk Kas)
+  name: string // Nama akun (contoh: Kas Utama)
+  type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
+  description?: string
+  isActive: boolean
+  parentId?: string // Untuk akun sub
+}
+
+// Transaksi Kas
+export type CashTransactionType = 'income' | 'expense'
+
+export interface CashTransaction extends SyncFields {
+  id: string
+  storeId: string
+  type: CashTransactionType
+  amount: number
+  coaId: string
+  coaName: string
+  coaCode: string
+  description: string
+  date: Date
+  cashierId: string
+  cashierName: string
+  referenceNumber?: string // Nomor referensi (contoh: nomor nota)
 }

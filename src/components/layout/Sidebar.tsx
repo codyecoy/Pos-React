@@ -11,7 +11,9 @@ import {
   History,
   Truck,
   CreditCard as DebtIcon,
-  ShoppingCart
+  ShoppingCart,
+  Wallet,
+  Shield
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +23,9 @@ const navItems = [
     { icon: ShoppingBag, label: 'Kasir', path: '/cashier' },
     { icon: Users, label: 'Pelanggan', path: '/customers' },
   ]},
+  { group: 'Keuangan', items: [
+    { icon: Wallet, label: 'Kas', path: '/cash' },
+  ]},
   { group: 'Persediaan & Pembelian', items: [
     { icon: Package, label: 'Produk', path: '/products' },
     { icon: Truck, label: 'Supplier', path: '/suppliers' },
@@ -28,6 +33,7 @@ const navItems = [
     { icon: DebtIcon, label: 'Hutang', path: '/debts' },
   ]},
   { group: 'Sistem', items: [
+    { icon: Shield, label: 'Kelola Kasir', path: '/users' },
     { icon: BarChart3, label: 'Laporan', path: '/reports' },
     { icon: History, label: 'Audit Log', path: '/audit-log' },
     { icon: Settings, label: 'Pengaturan', path: '/settings' },

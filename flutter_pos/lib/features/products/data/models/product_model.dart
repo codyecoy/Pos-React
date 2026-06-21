@@ -1,24 +1,33 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:json_annotation/json_annotation.dart';
+class ProductModel {
+  final String id;
+  final String name;
+  final double price;
+  final double costPrice;
+  final int stock;
+  final String category;
+  final String image;
+  final String barcode;
+  final String sku;
+  final String? status;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final DateTime? deletedAt;
+  final int syncVersion;
 
-part 'product_model.freezed.dart';
-part 'product_model.g.dart';
-
-@freezed
-class ProductModel with _$ProductModel {
-  const factory ProductModel({
-    required String id,
-    required String name,
-    required double price,
-    required double costPrice,
-    required int stock,
-    required String category,
-    required String image,
-    required String barcode,
-    required String sku,
-    String? status,
-  }) = _ProductModel;
-
-  factory ProductModel.fromJson(Map<String, dynamic> json) =>
-      _$ProductModelFromJson(json);
+  ProductModel({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.costPrice,
+    required this.stock,
+    required this.category,
+    required this.image,
+    required this.barcode,
+    required this.sku,
+    this.status,
+    this.createdAt,
+    this.updatedAt,
+    this.deletedAt,
+    this.syncVersion = 1,
+  });
 }

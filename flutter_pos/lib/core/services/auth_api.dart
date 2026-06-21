@@ -1,14 +1,12 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_pos/core/services/api_client.dart';
-import 'package:flutter_pos/features/auth/data/models/user_model.dart';
 
 class AuthApi {
-  final ApiClient _apiClient;
+  final Dio dio;
 
-  AuthApi(this._apiClient);
+  AuthApi(this.dio);
 
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await _apiClient.dio.post(
+    final response = await dio.post(
       '/auth/login',
       data: {'email': email, 'password': password},
     );
@@ -16,7 +14,7 @@ class AuthApi {
   }
 
   Future<Map<String, dynamic>> refreshToken() async {
-    final response = await _apiClient.dio.post('/auth/refresh');
+    final response = await dio.post('/auth/login');
     return response.data;
   }
 }

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Product, CartItem, Transaction, Customer } from '@/types'
+import { useSettingsStore } from './useSettingsStore'
 
 interface PosState {
   cart: CartItem[]
@@ -28,8 +29,6 @@ interface PosState {
   getDiscountTotal: () => number
   getTotal: () => number
 }
-
-const TAX_RATE = 0.11 // 11% PPN
 
 export const usePosStore = create<PosState>()(
   persist(
@@ -102,7 +101,9 @@ export const usePosStore = create<PosState>()(
       },
 
       getTax: () => {
-        return get().getSubtotal() * TAX_RATE
+        const { useVAT, vatRate } = useSettingsStore.getState().storeSettings
+        if (!useVAT) return 0
+        return get().getSubtotal() * (vatRate / 100)
       },
 
       getDiscountTotal: () => {

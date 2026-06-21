@@ -1,17 +1,19 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:json_annotation/json_annotation.dart';
+class CategoryModel {
+  final String id;
+  final String name;
+  final String? icon;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final DateTime? deletedAt;
+  final int syncVersion;
 
-part 'category_model.freezed.dart';
-part 'category_model.g.dart';
-
-@freezed
-class CategoryModel with _$CategoryModel {
-  const factory CategoryModel({
-    required String id,
-    required String name,
-    String? icon,
-  }) = _CategoryModel;
-
-  factory CategoryModel.fromJson(Map<String, dynamic> json) =>
-      _$CategoryModelFromJson(json);
+  CategoryModel({
+    required this.id,
+    required this.name,
+    this.icon,
+    this.createdAt,
+    this.updatedAt,
+    this.deletedAt,
+    this.syncVersion = 1,
+  });
 }

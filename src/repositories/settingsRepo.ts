@@ -15,6 +15,8 @@ export const settingsRepo = {
         address: 'Jl. Digital No. 123, Jakarta Selatan',
         currency: 'IDR',
         timezone: 'Asia/Jakarta',
+        useVAT: true,
+        vatRate: 11,
       }
       await db.settings.put({
         key: STORE_SETTINGS_KEY,
@@ -23,7 +25,15 @@ export const settingsRepo = {
       })
       return defaultSettings
     }
-    return JSON.parse(setting.value) as StoreSettings
+    const parsed = JSON.parse(setting.value) as StoreSettings
+    // Upgrade existing settings with new fields if missing
+    if (parsed.useVAT === undefined) {
+      parsed.useVAT = true
+    }
+    if (parsed.vatRate === undefined) {
+      parsed.vatRate = 11
+    }
+    return parsed
   },
 
   async saveStoreSettings(settings: StoreSettings): Promise<void> {
